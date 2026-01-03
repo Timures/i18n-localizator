@@ -1,45 +1,87 @@
 import { generateObject } from 'ai';
-// import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
+
+function setNestedProperty(obj: any, path: string, value: any) {
+  // Защита от Prototype Pollution
+  const keys = path.split('.').filter(k => k !== '__proto__' && k !== 'constructor');
+  let current = obj;
+  
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (i === keys.length - 1) {
+      current[key] = value;
+    } else {
+      // Проверка: если там уже строка, превращаем в объект (или пропускаем)
+      if (typeof current[key] === 'string') {
+        current[key] = { _value: current[key] }; 
+      }
+      current[key] = current[key] || {};
+      current = current[key];
+    }
+  }
+}
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const { text, keyStyle, isNested } = await readBody(event);
 
-  // Настройка Groq (использует совместимый с OpenAI SDK)
+  // Используем ключ из конфига или окружения
   const groq = createOpenAI({
     baseURL: 'https://api.groq.com/openai/v1',
-    apiKey: process.env.GROQ_API_KEY,
+    apiKey: config.groqApiKey || process.env.GROQ_API_KEY,
   });
+
   try {
     const result = await generateObject({
-      // Llama 3.3 70B — это уровень GPT-4, работает молниеносно
+      // Рекомендуемая модель для четкого следования Zod схеме
       model: groq('openai/gpt-oss-20b'), 
       schema: z.object({
+        detectedLanguage: z.string().describe('Language name, e.g. "Russian", "Kazakh"'),
         items: z.array(z.object({
-          key: z.string().describe('Semantic English key'),
-          value: z.string().describe('Translated English text')
+          key: z.string().describe('English semantic key'),
+          original: z.string().describe('Source text'),
+          en: z.string().describe('English translation')
         }))
       }),
-      prompt: `Translate this Russian text to English and create i18n keys. 
-               Style: ${keyStyle}. Nested: ${isNested}.
-               Text: "${text}"`,
+      prompt: `
+        Task: Extract i18n keys and translations.
+        Source Text: "${text}"
+        
+        Rules:
+        1. Source Language: Detect automatically.
+        2. Key Style: ${keyStyle}.
+        3. Hierarchy: ${isNested ? 'Use dot.notation for keys to represent nesting' : 'Flat keys only'}.
+        4. Values: Extract ONLY the text. Remove prefixes like "Label:", "Button:", "Title:".
+        5. Quality: Keys must be semantic English.
+      `,
     });
 
-    const finalJson = {};
-    // ... логика сборки JSON остается прежней ...
-    result.object.items.forEach(item => {
-      finalJson[item.key] = item.value;
+    const { detectedLanguage, items } = result.object;
+    const originalJson = {};
+    const enJson = {};
+
+    items.forEach(item => {
+      if (isNested) {
+        setNestedProperty(originalJson, item.key, item.original);
+        setNestedProperty(enJson, item.key, item.en);
+      } else {
+        originalJson[item.key] = item.original;
+        enJson[item.key] = item.en;
+      }
     });
 
-    return finalJson;
+    return { 
+      sourceLang: detectedLanguage,
+      original: originalJson, 
+      en: enJson 
+    };
 
   } catch (error: any) {
-    console.error('Groq Error:', error.message);
+    console.error('Generation Error:', error.message);
     throw createError({ 
       statusCode: 500, 
-      statusMessage: 'AI Service busy, try again later' 
+      statusMessage: 'AI Error: ' + error.message 
     });
   }
 });

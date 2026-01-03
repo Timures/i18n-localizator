@@ -1,7 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   runtimeConfig: {
-    googleGenerativeAiApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    googleGenerativeAiApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    groqApiKey: process.env.GROQ_API_KEY
   },
   // Подключаем модуль
   modules: ['@nuxt/ui'],
