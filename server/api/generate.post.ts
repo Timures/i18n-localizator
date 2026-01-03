@@ -49,11 +49,12 @@ export default defineEventHandler(async (event) => {
         Source Text: "${text}"
         
         Rules:
-        1. Source Language: Detect automatically.
-        2. Key Style: ${keyStyle}.
-        3. Hierarchy: ${isNested ? 'Use dot.notation for keys to represent nesting' : 'Flat keys only'}.
-        4. Values: Extract ONLY the text. Remove prefixes like "Label:", "Button:", "Title:".
-        5. Quality: Keys must be semantic English.
+        1. LIMIT: Extract NO MORE than 30 semantic keys. If the text is longer, focus on the most important UI elements.
+        2. Source Language: Detect automatically.
+        3. Key Style: ${keyStyle}.
+        4. Hierarchy: ${isNested ? 'Use dot.notation' : 'Flat keys'}.
+        5. Values: Extract ONLY text, clean from "Label:", "Button:", etc.
+        6. Quality: Keys must be semantic English.
       `,
     });
 
