@@ -1,5 +1,5 @@
 <template>
-  <div class="h-4/5 min-h-80 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl bg-neutral-50/50 dark:bg-white/[0.02]">
+  <div class="w-4/5 mx-auto mt-5 h-4/5 min-h-80 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl bg-neutral-50/50 dark:bg-white/[0.02]">
     
     <div class="relative mb-6">
       <div class="absolute inset-0 bg-primary-500/20 blur-2xl rounded-full"></div>

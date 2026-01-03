@@ -19,14 +19,16 @@
 </script>
 
 <template>
-   <UFooter>
-   <template #left>
+   <UFooter class="my-5">
+   
+    <template #left>
         <p class="text-muted text-sm">
           Copyright © {{ new Date().getFullYear() }} - {{ $t("support.madeWith") }}
         </p>
       </template>
    <template #right>
-    <UButton
+    <div class="flex flex-col md:flex-row gap-4">
+      <UButton
       to="https://boosty.to/твой_никнейм"
       target="_blank"
       color="orange"
@@ -43,7 +45,9 @@
       icon="i-lucide-coffee"
       :label="$t('support.kofi')"
     />
+    </div>
  </template>
+
   
   
 </UFooter>

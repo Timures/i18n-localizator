@@ -29,6 +29,24 @@ const isOverLimit = computed(() => estimatedKeys.value > MAX_KEYS_SUGGESTION)
 const showWarning = computed(() => {
   return !isNested.value && inputText.value.includes(':')
 })
+
+// 1. Определяем, является ли ввод JSON-ом
+const isJsonInput = computed(() => {
+  const trimmed = inputText.value.trim()
+  // Если текст начинается с { или [, скорее всего, это JSON
+  return trimmed.startsWith('{') || trimmed.startsWith('[')
+})
+
+// 2. Валидация JSON (только если мы определили, что это JSON)
+const isValidJson = computed(() => {
+  if (!isJsonInput.value) return true // Обычный текст всегда "валиден"
+  try {
+    JSON.parse(inputText.value)
+    return true
+  } catch (e) {
+    return false
+  }
+})
 // composable
 const toast = useToast()
 const { t } = useI18n()
@@ -64,7 +82,7 @@ async function generateI18n() {
         title: t('toasts.error'),
         description: t('toasts.limitError'), // Наш новый текст
         icon: 'i-lucide-clock',
-        color: 'orange', // Оранжевый цвет намекает на временную проблему
+        color: 'warning', // Оранжевый цвет намекает на временную проблему
         timeout: 10000 // Даем пользователю больше времени прочитать (10 сек)
       })
     } else {
@@ -72,7 +90,7 @@ async function generateI18n() {
       toast.add({
         title: t('toasts.error'),
         description: t('toasts.genError'),
-        color: 'red'
+        color: 'error'
       })
     }
   } finally {
@@ -109,7 +127,28 @@ async function downloadZip() {
   link.click()
   toast.add({ title: 'ZIP Created', description: 'Download started', color: 'success' })
 }
-
+// Метод для "красивого" форматирования (Beautify)
+const beautifyJson = () => {
+  try {
+    const obj = JSON.parse(inputText.value)
+    inputText.value = JSON.stringify(obj, null, 2)
+    
+    // Опционально: уведомление об успехе
+    toast.add({
+      title: 'Formatted!',
+      icon: 'i-lucide-check',
+      color: 'success',
+      timeout: 2000
+    })
+  } catch (e) {
+    toast.add({
+      title: 'Invalid JSON',
+      description: 'Cannot format: structure is broken',
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    })
+  }
+}
 // 1. При загрузке компонента восстанавливаем данные
 onMounted(() => {
   const savedDraft = localStorage.getItem('i18n_draft')
@@ -125,142 +164,172 @@ watch(inputText, (newValue) => {
 </script>
 
 <template>
-<div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 font-sans py-10">
-        
-  <div class="fixed top-(--header-height) left-0 right-0 z-50 h-1">
+  <div class="min-h-screen bg-transparent font-sans py-10">
+    
+    <div class="fixed top-[var(--header-height)] left-0 right-0 z-50 h-0.5">
       <UProgress v-if="isLoading" animation="carousel" size="xs" color="primary" />
     </div>
 
-        <UCard class="mb-8 shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-800">
-          <div class="flex flex-wrap items-center gap-6">
-            <div class="flex items-center gap-3">
-              <span class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">{{ $t("toolbar.keyStyle") }}:</span>
-              <USelect v-model="keyStyle" :items="options" class="w-44" />
+    <UCard 
+      class="mb-8 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 bg-white dark:bg-[#131926]"
+      :ui="{ body: { padding: 'px-4 py-3 sm:p-4' } }"
+    >
+      <div class="flex flex-wrap items-center gap-6">
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-semibold text-slate-600 dark:text-slate-400">
+            {{ $t("toolbar.keyStyle") }}:
+          </span>
+          <USelect v-model="keyStyle" :items="options" class="w-44" />
+        </div>
+        <UCheckbox v-model="isNested" :label="$t('toolbar.nested')" />
+        
+        <UButton 
+          :loading="isLoading" 
+          :label="$t('toolbar.generate')"
+          icon="i-lucide-sparkles" 
+          size="lg"
+          class="ml-auto shadow-lg shadow-primary-500/20"
+          @click="generateI18n"
+          :disabled="!inputText || isLoading || isOverLimit"
+        />
+      </div>
+    </UCard>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      
+      <div class="flex flex-col gap-3">
+        <div class="flex justify-between items-center px-1 min-h-6">
+          <div class="flex gap-4 items-center">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              {{ $t("editor.sourceLabel") }} ({{ sourceLanguageName }})
+            </label>
+            <div class="flex gap-2 items-center">
+              <span v-if="inputText" class="text-[10px] text-slate-400 italic animate-pulse">
+                Draft saved
+              </span>
+              <span :class="['text-[10px] font-bold', isOverLimit ? 'text-error-500' : 'text-slate-400']">
+                {{ $t('editor.keysCount', { n: estimatedKeys, max: MAX_KEYS_SUGGESTION }) }}
+              </span>
             </div>
-            <UCheckbox v-model="isNested" :label="$t('toolbar.nested')" />
-            <UButton 
-              :loading="isLoading" 
-              :label="$t('toolbar.generate')"
-              icon="i-lucide-sparkles" 
-              size="lg"
-              class="ml-auto"
-              @click="generateI18n"
-              :disabled="!inputText || isLoading || isOverLimit"
+          </div>
+          <UButton 
+            v-if="inputText" 
+            variant="ghost" 
+            color="error" 
+            icon="i-lucide-trash-2" 
+            size="xs" 
+            @click="clearInput" 
+          />
+        </div>
+
+        <UAlert v-if="isOverLimit" icon="i-lucide-alert-triangle" color="error" variant="subtle" :title="$t('toasts.error')" :description="$t('editor.tooMuchData')" class="mb-2" />
+        <UAlert v-if="showWarning" icon="i-lucide-info" color="warning" variant="subtle" title="Tip" :description="$t('editor.tip')" class="mb-1" />
+
+        <div class="h-125 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-[#131926] shadow-sm focus-within:ring-2 focus-within:ring-primary-500/50 transition-all">
+          <UTextarea
+            v-model="inputText"
+            :rows="24"
+            font-mono
+            variant="none"
+            autoresize
+            class="w-full h-full"
+            :placeholder="$t('editor.placeholder')"
+          />
+        </div>
+
+        <div class="flex justify-between items-center px-1">
+          <p class="text-[10px] text-slate-400 italic">{{$t("editor.limitNote")}}</p>
+          <div class="flex items-center gap-2">
+            <Transition name="fade" mode="out-in">
+              <UBadge
+                v-if="inputText.trim() && isJsonInput"
+                :key="isValidJson ? 'valid' : 'invalid'"
+                :color="isValidJson ? 'success' : 'error'"
+                variant="subtle"
+                size="xs"
+                class="font-bold uppercase"
+              >
+                <UIcon :name="isValidJson ? 'i-lucide-check-circle' : 'i-lucide-x-circle'" class="mr-1" />
+                {{ isValidJson ? 'JSON Valid' : 'JSON Invalid' }}
+              </UBadge>
+            </Transition>
+            <UButton
+              v-if="inputText.trim() && isJsonInput && isValidJson"
+              icon="i-lucide-wand-2"
+              label="Beautify"
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              @click="beautifyJson"
             />
           </div>
-        </UCard>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          
-          <div class="flex flex-col gap-3">
-            <div class="flex justify-between items-center px-1 min-h-6">
-              <div class="flex gap-4 items-center">
-                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">
-                  {{ $t("editor.sourceLabel") }} ({{ sourceLanguageName }})
-                </label>
-               <div class="flex justify-between items-center mt-1">
-                <span class="text-[10px] text-neutral-400 italic">
-                  {{ inputText.length > 0 ? 'Draft saved locally' : '' }}
-                </span>
-                
-                <span :class="['text-[10px] font-bold', isOverLimit ? 'text-red-500' : 'text-neutral-400']">
-                  {{ $t('editor.keysCount', { n: estimatedKeys, max: MAX_KEYS_SUGGESTION }) }}
-                </span>
-              </div>
-              </div>
-              <UButton v-if="inputText" variant="ghost" color="error" icon="i-lucide-trash-2" :label="$t('editor.clear')" size="xs" @click="clearInput" />
-            </div>
-
-            <UAlert
-  v-if="isOverLimit"
-  icon="i-lucide-alert-triangle"
-  color="error"
-  variant="subtle"
-  :title="$t('toasts.error')"
-  :description="$t('editor.tooMuchData')"
-  class="mb-2"
-/>
-
-            <UAlert v-if="showWarning" icon="i-lucide-info" color="warning" variant="subtle" title="Tip" description="$t('editor.tip')" class="mb-1" />
-
-            <div class="h-125 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-950 shadow-sm flex flex-col focus-within:ring-2 focus-within:ring-primary-500 transition-all">
-              <UTextarea
-                v-model="inputText"
-                :placeholder="$t('editor.placeholder')"
-                class="flex-1 items-start"
-                :rows="25"
-                variant="none"
-                control-class="h-full overflow-y-auto resize-none p-4 font-sans text-sm focus:ring-0"
-              />
-            </div>
-            <p class="px-1 text-[10px] text-neutral-400 italic">{{$t("editor.limitNote")}}</p>
-          </div>
-<!-- results -->
-          <div class="flex flex-col gap-3">
-            <div class="flex justify-between items-center px-1 min-h-6">
-              <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">{{ $t("result.label") }}</label>
-              <UButton v-if="results" variant="ghost" color="neutral" icon="i-lucide-copy" :label="$t('result.copy')" size="xs" @click="copyToClipboard" />
-            </div>
-            
-            <div class="relative h-125 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden shadow-sm flex flex-col">
-             <Transition
-  enter-active-class="transition duration-200 ease-out"
-  enter-from-class="opacity-0 transform scale-95"
-  enter-to-class="opacity-100 transform scale-100"
-  leave-active-class="transition duration-100 ease-in"
-  leave-from-class="opacity-100"
-  leave-to-class="opacity-0"
-  mode="out-in"
->
-<div v-if="isLoading" key="loading" class="absolute inset-0 p-6 flex flex-col gap-4 bg-white/80 dark:bg-neutral-950/80 z-20 backdrop-blur-[1px]">
-          <USkeleton class="h-4 w-[15%]" /> <div class="space-y-4 ml-6 flex-1">
-            <div v-for="i in 6" :key="i" class="flex gap-4">
-              <USkeleton class="h-3 w-[35%]" /> 
-              <USkeleton class="h-3 w-[45%]" />
-            </div>
-          </div>
-          <USkeleton class="h-4 w-[10%]" /> <div class="flex justify-between items-center mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800">
-            <USkeleton class="h-8 w-32" />
-            <USkeleton class="h-4 w-20" />
-          </div>
         </div>
+      </div>
 
-              <div v-else-if="results" key="results" class="flex flex-col h-full p-4 gap-4">
-                <div class="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0">
-                  <button @click="activeTab = 'original'" :class="[activeTab === 'original' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary' : 'text-neutral-500', 'flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-2']">
-                    <UIcon name="i-lucide-languages" /> {{ sourceLanguageName }}
-                  </button>
-                  <button @click="activeTab = 'en'" :class="[activeTab === 'en' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary' : 'text-neutral-500', 'flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-2']">
-                    <UIcon name="i-lucide-globe" /> English
-                  </button>
+      <div class="flex flex-col gap-3">
+        <div class="flex justify-between items-center px-1 min-h-6">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ $t("result.label") }}</label>
+          <UButton v-if="results" variant="ghost" color="neutral" icon="i-lucide-copy" :label="$t('result.copy')" size="xs" @click="copyToClipboard" />
+        </div>
+        
+        <div class="relative h-125 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131926] overflow-hidden shadow-sm flex flex-col">
+          <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+            mode="out-in"
+          >
+            <div v-if="isLoading" key="loading" class="absolute inset-0 p-6 flex flex-col gap-4 bg-white/80 dark:bg-[#0B0F1A]/80 z-20 backdrop-blur-[2px]">
+              <USkeleton class="h-4 w-[15%]" />
+              <div class="space-y-4 ml-6 flex-1">
+                <div v-for="i in 6" :key="i" class="flex gap-4">
+                  <USkeleton class="h-3 w-[35%]" /> <USkeleton class="h-3 w-[45%]" />
                 </div>
+              </div>
+              <USkeleton class="h-4 w-[10%]" />
+            </div>
 
-                <div class="flex-1 overflow-hidden rounded-lg bg-neutral-900 border border-neutral-800">
-                  <div class="h-full overflow-y-auto p-4 font-mono text-[11px] leading-relaxed">
-                    <pre v-if="activeTab === 'original'" class="text-green-400 whitespace-pre-wrap">{{ JSON.stringify(results.original, null, 2) }}</pre>
-                    <pre v-if="activeTab === 'en'" class="text-blue-400 whitespace-pre-wrap">{{ JSON.stringify(results.en, null, 2) }}</pre>
-                  </div>
-                </div>
+            <div v-else-if="results" key="results" class="flex flex-col h-full p-4 gap-4">
+              <div class="flex p-1 bg-slate-100 dark:bg-slate-800/50 rounded-lg shrink-0">
+                <button @click="activeTab = 'original'" :class="[activeTab === 'original' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-500' : 'text-slate-500', 'flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2']">
+                  <UIcon name="i-lucide-languages" /> {{ sourceLanguageName }}
+                </button>
+                <button @click="activeTab = 'en'" :class="[activeTab === 'en' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-500' : 'text-slate-500', 'flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2']">
+                  <UIcon name="i-lucide-globe" /> English
+                </button>
+              </div>
 
-                <div class="shrink-0 pt-2 flex justify-between items-center border-t border-neutral-100 dark:border-neutral-800">
-                  <UButton :label="$t('result.download')" color="neutral" variant="ghost" icon="i-lucide-archive" size="sm" @click="downloadZip" />
-                  <span class="text-[10px] text-neutral-400 uppercase font-bold tracking-tighter tracking-widest">{{ $t("result.ready") }}</span>
+              <div class="flex-1 overflow-hidden rounded-lg bg-[#0B0F1A] border border-slate-800 shadow-inner">
+                <div class="h-full overflow-y-auto p-4 font-mono text-[11px] leading-relaxed">
+                  <pre v-if="activeTab === 'original'" class="text-emerald-400 whitespace-pre-wrap">{{ JSON.stringify(results.original, null, 2) }}</pre>
+                  <pre v-if="activeTab === 'en'" class="text-sky-400 whitespace-pre-wrap">{{ JSON.stringify(results.en, null, 2) }}</pre>
                 </div>
               </div>
 
-              <div v-else key="empty" class="flex flex-col items-center justify-center h-full text-neutral-400 italic gap-2 opacity-40">
-                <EmptyState />
+              <div class="shrink-0 pt-2 flex justify-between items-center border-t border-slate-100 dark:border-slate-800">
+                <UButton :label="$t('result.download')" color="neutral" variant="ghost" icon="i-lucide-archive" size="sm" @click="downloadZip" />
+                <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">{{ $t("result.ready") }}</span>
               </div>
-           </Transition>   
             </div>
-            <p class="px-1 text-[10px] text-neutral-400 italic text-right">{{ $t("result.footerNote") }}</p>
-          </div>
+
+            <div v-else key="empty" class="h-full">
+              <EmptyState />
+            </div>
+          </Transition>   
         </div>
-<div class="my-10 text-center">
-          
-          <p class="text-neutral-500 text-lg max-w-none md:max-w-3/4 text-center mx-auto">{{ $t("guide.title") }}</p>
-        </div>
-        </div>
+        <p class="px-1 text-[10px] text-slate-400 italic text-right">{{ $t("result.footerNote") }}</p>
+      </div>
+    </div>
+    
+    <div class="my-16 text-center">
+      <p class="text-slate-500 dark:text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+        {{ $t("guide.title") }}
+      </p>
+    </div>
+  </div>
 </template>
 
 <style scoped>

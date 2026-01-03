@@ -18,7 +18,10 @@
     "clear": "Clear",
     "limitNote": "* Optimized for up to 30 keys per generation",
     "tip": "Enable 'Nested Structure' for texts with sections.",
-    "tooMuchData": "Too much data. Please limit your text to 30 items."
+    "tooMuchData": "Too much data. Please limit your text to 30 items.",
+    "jsonValid": "JSON is valid",
+  "jsonInvalid": "JSON is invalid",
+  "beautify": "Beautify"
   },
   "result": {
     "label": "Resulting Locales",
