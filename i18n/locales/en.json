@@ -62,6 +62,11 @@
     "error": "Error",
     "genError": "Failed to generate",
     "copied": "Copied!",
-    "copiedDesc": "{lang} JSON copied to clipboard"
-  }
+    "copiedDesc": "{lang} JSON copied to clipboard",
+    "limitError": "Request limit reached. Please try again in a minute or log in later."
+  },
+  "resultEmptyState": {
+  "placeholderTitle": "Ready to generate",
+  "placeholderDesc": "Paste your text on the left and see the magic happen here."
+}
 }

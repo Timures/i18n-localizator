@@ -1,4 +1,21 @@
 <script setup lang="ts">
+  onMounted(() => {
+  // Проверяем, не добавлен ли скрипт уже
+  if (!window.kofiWidgetOverlayConfig) {
+    const script = document.createElement('script');
+    script.src = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
+    script.async = true;
+    script.onload = () => {
+      kofiWidgetOverlay.draw('your_username', {
+        'type': 'floating-chat',
+        'floating-chat.donateButton.text': 'Support me',
+        'floating-chat.donateButton.background-color': '#00b9fe',
+        'floating-chat.donateButton.text-color': '#fff'
+      });
+    };
+    document.body.appendChild(script);
+  }
+});
 </script>
 
 <template>

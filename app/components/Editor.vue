@@ -29,9 +29,11 @@ const isOverLimit = computed(() => estimatedKeys.value > MAX_KEYS_SUGGESTION)
 const showWarning = computed(() => {
   return !isNested.value && inputText.value.includes(':')
 })
-
+// composable
 const toast = useToast()
 const { t } = useI18n()
+
+
 // Функции
 async function generateI18n() {
   if (!inputText.value || isOverLimit.value) return
@@ -55,8 +57,24 @@ async function generateI18n() {
     sourceLanguageName.value = data.sourceLang
     activeTab.value = 'original'
     toast.add({ title: t('toasts.success'), description: t('toasts.genSuccess'), color: 'success' })
-  } catch (err) {
-    toast.add({ title: t('toasts.error'), description: err.statusMessage || t('toasts.genError'), color: 'error' })
+  } catch (error:any) {
+    // Проверяем, не исчерпан ли лимит (код 429 или 503)
+    if (error.status === 429 || error.status === 503) {
+      toast.add({
+        title: t('toasts.error'),
+        description: t('toasts.limitError'), // Наш новый текст
+        icon: 'i-lucide-clock',
+        color: 'orange', // Оранжевый цвет намекает на временную проблему
+        timeout: 10000 // Даем пользователю больше времени прочитать (10 сек)
+      })
+    } else {
+      // Обычная ошибка (сеть, сервер и т.д.)
+      toast.add({
+        title: t('toasts.error'),
+        description: t('toasts.genError'),
+        color: 'red'
+      })
+    }
   } finally {
     isLoading.value = false
   }
@@ -66,6 +84,7 @@ function clearInput() {
   inputText.value = ''
   results.value = null
   sourceLanguageName.value = 'Source'
+  localStorage.removeItem('i18n_draft')
 }
 
 function copyToClipboard() {
@@ -90,11 +109,27 @@ async function downloadZip() {
   link.click()
   toast.add({ title: 'ZIP Created', description: 'Download started', color: 'success' })
 }
+
+// 1. При загрузке компонента восстанавливаем данные
+onMounted(() => {
+  const savedDraft = localStorage.getItem('i18n_draft')
+  if (savedDraft) {
+    inputText.value = savedDraft
+  }
+})
+
+// 2. Следим за изменениями и сохраняем (с небольшой задержкой/debounce)
+watch(inputText, (newValue) => {
+  localStorage.setItem('i18n_draft', newValue)
+})
 </script>
 
 <template>
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 font-sans py-10">
         
+  <div class="fixed top-(--header-height) left-0 right-0 z-50 h-1">
+      <UProgress v-if="isLoading" animation="carousel" size="xs" color="primary" />
+    </div>
 
         <UCard class="mb-8 shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-800">
           <div class="flex flex-wrap items-center gap-6">
@@ -123,9 +158,15 @@ async function downloadZip() {
                 <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">
                   {{ $t("editor.sourceLabel") }} ({{ sourceLanguageName }})
                 </label>
-                <span :class="['text-[10px] font-bold transition-colors', isOverLimit ? 'text-red-500' : 'text-neutral-400']">
-                {{ $t('editor.keysCount', { n: estimatedKeys, max: MAX_KEYS_SUGGESTION }) }}
-              </span>
+               <div class="flex justify-between items-center mt-1">
+                <span class="text-[10px] text-neutral-400 italic">
+                  {{ inputText.length > 0 ? 'Draft saved locally' : '' }}
+                </span>
+                
+                <span :class="['text-[10px] font-bold', isOverLimit ? 'text-red-500' : 'text-neutral-400']">
+                  {{ $t('editor.keysCount', { n: estimatedKeys, max: MAX_KEYS_SUGGESTION }) }}
+                </span>
+              </div>
               </div>
               <UButton v-if="inputText" variant="ghost" color="error" icon="i-lucide-trash-2" :label="$t('editor.clear')" size="xs" @click="clearInput" />
             </div>
@@ -154,7 +195,7 @@ async function downloadZip() {
             </div>
             <p class="px-1 text-[10px] text-neutral-400 italic">{{$t("editor.limitNote")}}</p>
           </div>
-
+<!-- results -->
           <div class="flex flex-col gap-3">
             <div class="flex justify-between items-center px-1 min-h-6">
               <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">{{ $t("result.label") }}</label>
@@ -162,11 +203,29 @@ async function downloadZip() {
             </div>
             
             <div class="relative h-125 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden shadow-sm flex flex-col">
-              <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-neutral-950/80 z-20 backdrop-blur-[1px]">
-                <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-primary" />
-              </div>
+             <Transition
+  enter-active-class="transition duration-200 ease-out"
+  enter-from-class="opacity-0 transform scale-95"
+  enter-to-class="opacity-100 transform scale-100"
+  leave-active-class="transition duration-100 ease-in"
+  leave-from-class="opacity-100"
+  leave-to-class="opacity-0"
+  mode="out-in"
+>
+<div v-if="isLoading" key="loading" class="absolute inset-0 p-6 flex flex-col gap-4 bg-white/80 dark:bg-neutral-950/80 z-20 backdrop-blur-[1px]">
+          <USkeleton class="h-4 w-[15%]" /> <div class="space-y-4 ml-6 flex-1">
+            <div v-for="i in 6" :key="i" class="flex gap-4">
+              <USkeleton class="h-3 w-[35%]" /> 
+              <USkeleton class="h-3 w-[45%]" />
+            </div>
+          </div>
+          <USkeleton class="h-4 w-[10%]" /> <div class="flex justify-between items-center mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800">
+            <USkeleton class="h-8 w-32" />
+            <USkeleton class="h-4 w-20" />
+          </div>
+        </div>
 
-              <div v-if="results" class="flex flex-col h-full p-4 gap-4">
+              <div v-else-if="results" key="results" class="flex flex-col h-full p-4 gap-4">
                 <div class="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0">
                   <button @click="activeTab = 'original'" :class="[activeTab === 'original' ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary' : 'text-neutral-500', 'flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-2']">
                     <UIcon name="i-lucide-languages" /> {{ sourceLanguageName }}
@@ -189,10 +248,10 @@ async function downloadZip() {
                 </div>
               </div>
 
-              <div v-else-if="!isLoading" class="flex flex-col items-center justify-center h-full text-neutral-400 italic gap-2 opacity-40">
-                <UIcon name="i-lucide-file-json-2" class="w-12 h-12" />
-                <p>{{ $t("result.placeholder") }}</p>
+              <div v-else key="empty" class="flex flex-col items-center justify-center h-full text-neutral-400 italic gap-2 opacity-40">
+                <EmptyState />
               </div>
+           </Transition>   
             </div>
             <p class="px-1 text-[10px] text-neutral-400 italic text-right">{{ $t("result.footerNote") }}</p>
           </div>
