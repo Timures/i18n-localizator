@@ -35,7 +35,7 @@ useSeoMeta({
  
     </UMain>
 
-     <USeparator icon="i-simple-icons-nuxtdotjs" type="dashed" class="h-px" />
+     <USeparator icon="i-simple-icons-tsnode" type="dashed" class="h-px" />
 
    
     <Footer />
