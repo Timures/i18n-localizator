@@ -31,7 +31,7 @@ const showWarning = computed(() => {
 })
 
 const toast = useToast()
-
+const { t } = useI18n()
 // Функции
 async function generateI18n() {
   if (!inputText.value || isOverLimit.value) return
@@ -54,9 +54,9 @@ async function generateI18n() {
     }
     sourceLanguageName.value = data.sourceLang
     activeTab.value = 'original'
-    toast.add({ title: 'Success!', description: 'JSON generated successfully', color: 'success' })
+    toast.add({ title: t('toasts.success'), description: t('toasts.genSuccess'), color: 'success' })
   } catch (err) {
-    toast.add({ title: 'Error', description: err.statusMessage || 'Failed to generate', color: 'error' })
+    toast.add({ title: t('toasts.error'), description: err.statusMessage || t('toasts.genError'), color: 'error' })
   } finally {
     isLoading.value = false
   }
@@ -74,7 +74,7 @@ function copyToClipboard() {
   const data = isOriginal ? results.value.original : results.value.en
   
   navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-  toast.add({ title: 'Copied!', description: `${isOriginal ? sourceLanguageName.value : 'English'} JSON copied`, color: 'info' })
+  toast.add({ title: t('toasts.copied'), description: `${t('toasts.copiedDesc', { lang:isOriginal ? sourceLanguageName.value : 'English'})}`, color: 'info' })
 }
 
 async function downloadZip() {
@@ -93,19 +93,19 @@ async function downloadZip() {
 </script>
 
 <template>
-<div>
+<div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 font-sans py-10">
         
 
         <UCard class="mb-8 shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-800">
           <div class="flex flex-wrap items-center gap-6">
             <div class="flex items-center gap-3">
-              <span class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">Key Style:</span>
+              <span class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">{{ $t("toolbar.keyStyle") }}:</span>
               <USelect v-model="keyStyle" :items="options" class="w-44" />
             </div>
-            <UCheckbox v-model="isNested" label="Nested Structure" />
+            <UCheckbox v-model="isNested" :label="$t('toolbar.nested')" />
             <UButton 
               :loading="isLoading" 
-              label="Generate JSON"
+              :label="$t('toolbar.generate')"
               icon="i-lucide-sparkles" 
               size="lg"
               class="ml-auto"
@@ -121,34 +121,44 @@ async function downloadZip() {
             <div class="flex justify-between items-center px-1 min-h-6">
               <div class="flex gap-4 items-center">
                 <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">
-                  Source Text ({{ sourceLanguageName }})
+                  {{ $t("editor.sourceLabel") }} ({{ sourceLanguageName }})
                 </label>
                 <span :class="['text-[10px] font-bold transition-colors', isOverLimit ? 'text-red-500' : 'text-neutral-400']">
-                  ~{{ estimatedKeys }} / {{ MAX_KEYS_SUGGESTION }} keys
-                </span>
+                {{ $t('editor.keysCount', { n: estimatedKeys, max: MAX_KEYS_SUGGESTION }) }}
+              </span>
               </div>
-              <UButton v-if="inputText" variant="ghost" color="error" icon="i-lucide-trash-2" label="Clear" size="xs" @click="clearInput" />
+              <UButton v-if="inputText" variant="ghost" color="error" icon="i-lucide-trash-2" :label="$t('editor.clear')" size="xs" @click="clearInput" />
             </div>
 
-            <UAlert v-if="showWarning" icon="i-lucide-info" color="warning" variant="subtle" title="Tip" description="Enable 'Nested Structure' for texts with sections." class="mb-1" />
+            <UAlert
+  v-if="isOverLimit"
+  icon="i-lucide-alert-triangle"
+  color="error"
+  variant="subtle"
+  :title="$t('toasts.error')"
+  :description="$t('editor.tooMuchData')"
+  class="mb-2"
+/>
+
+            <UAlert v-if="showWarning" icon="i-lucide-info" color="warning" variant="subtle" title="Tip" description="$t('editor.tip')" class="mb-1" />
 
             <div class="h-125 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-950 shadow-sm flex flex-col focus-within:ring-2 focus-within:ring-primary-500 transition-all">
               <UTextarea
                 v-model="inputText"
-                placeholder="Paste your text here (e.g., Save: Сохранить)..."
+                :placeholder="$t('editor.placeholder')"
                 class="flex-1 items-start"
                 :rows="25"
                 variant="none"
                 control-class="h-full overflow-y-auto resize-none p-4 font-sans text-sm focus:ring-0"
               />
             </div>
-            <p class="px-1 text-[10px] text-neutral-400 italic">* Optimized for up to 30 keys per generation</p>
+            <p class="px-1 text-[10px] text-neutral-400 italic">{{$t("editor.limitNote")}}</p>
           </div>
 
           <div class="flex flex-col gap-3">
             <div class="flex justify-between items-center px-1 min-h-6">
-              <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Resulting Locales</label>
-              <UButton v-if="results" variant="ghost" color="neutral" icon="i-lucide-copy" label="Copy Active" size="xs" @click="copyToClipboard" />
+              <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">{{ $t("result.label") }}</label>
+              <UButton v-if="results" variant="ghost" color="neutral" icon="i-lucide-copy" :label="$t('result.copy')" size="xs" @click="copyToClipboard" />
             </div>
             
             <div class="relative h-125 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden shadow-sm flex flex-col">
@@ -174,20 +184,23 @@ async function downloadZip() {
                 </div>
 
                 <div class="shrink-0 pt-2 flex justify-between items-center border-t border-neutral-100 dark:border-neutral-800">
-                  <UButton label="Download ZIP" color="neutral" variant="ghost" icon="i-lucide-archive" size="sm" @click="downloadZip" />
-                  <span class="text-[10px] text-neutral-400 uppercase font-bold tracking-tighter tracking-widest">Ready to export</span>
+                  <UButton :label="$t('result.download')" color="neutral" variant="ghost" icon="i-lucide-archive" size="sm" @click="downloadZip" />
+                  <span class="text-[10px] text-neutral-400 uppercase font-bold tracking-tighter tracking-widest">{{ $t("result.ready") }}</span>
                 </div>
               </div>
 
               <div v-else-if="!isLoading" class="flex flex-col items-center justify-center h-full text-neutral-400 italic gap-2 opacity-40">
                 <UIcon name="i-lucide-file-json-2" class="w-12 h-12" />
-                <p>JSON results will appear here</p>
+                <p>{{ $t("result.placeholder") }}</p>
               </div>
             </div>
-            <p class="px-1 text-[10px] text-neutral-400 italic text-right">Professional i18n structure provided by AI</p>
+            <p class="px-1 text-[10px] text-neutral-400 italic text-right">{{ $t("result.footerNote") }}</p>
           </div>
         </div>
-
+<div class="my-10 text-center">
+          
+          <p class="text-neutral-500 text-lg max-w-none md:max-w-3/4 text-center mx-auto">{{ $t("guide.title") }}</p>
+        </div>
         </div>
 </template>
 

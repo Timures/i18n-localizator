@@ -13,6 +13,7 @@
     "@ai-sdk/google": "^3.0.2",
     "@ai-sdk/openai": "^3.0.2",
     "@nuxt/ui": "^4.3.0",
+    "@nuxtjs/i18n": "^10.2.1",
     "ai": "^6.0.5",
     "jszip": "^3.10.1",
     "lucide-vue-next": "^0.562.0",

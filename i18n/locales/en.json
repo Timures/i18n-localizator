@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "title": "i18n AI Generator | Smart JSON Localization",
+    "description": "Professional localization in seconds. Convert raw text to structured i18n JSON with AI."
+  },
+  "header": {
+    "subtitle": "Professional localization in seconds"
+  },
+  "toolbar": {
+    "keyStyle": "Key Style",
+    "nested": "Nested Structure",
+    "generate": "Generate JSON"
+  },
+  "editor": {
+    "sourceLabel": "Source Text",
+    "keysCount": "{n} / {max} keys",
+    "placeholder": "Paste your text here... (e.g., Save: Сохранить)",
+    "clear": "Clear",
+    "limitNote": "* Optimized for up to 30 keys per generation",
+    "tip": "Enable 'Nested Structure' for texts with sections.",
+    "tooMuchData": "Too much data. Please limit your text to 30 items."
+  },
+  "result": {
+    "label": "Resulting Locales",
+    "copy": "Copy Active",
+    "download": "Download ZIP",
+    "ready": "Ready to export",
+    "placeholder": "JSON results will appear here",
+    "footerNote": "Professional i18n structure provided by AI"
+  },
+  "support": {
+    "boosty": "Support on Boosty (RU/KZ cards)",
+    "kofi": "Support on Ko-fi",
+    "madeWith": "Created with ❤️ for developers"
+  },
+  "tutorial": {
+    "title": "How to use the tool?",
+    "step1": "Paste your text (up to 30 lines) into the left field.",
+    "step2": "The AI ​​will automatically detect the source language.",
+    "step3": "Select a Key Style: for example, camelCase for JS/TS or snake_case for Python/Ruby.",
+    "step4": "Use Nested Structure if you want to group keys into semantic blocks separated by dots.",
+    "step5": "Copy the result or download the prepared ZIP archive with two JSON files."
+  },
+  "guide": {
+    "title":"An intelligent tool for developers that automates the routine process of creating localization files. The application takes raw text in any language and transforms it into structured JSON files with semantically correct keys in English.",
+    "smart": {
+      "title": "Smart Detection",
+      "desc": "Automatically detects input language and prepares structure for English localization."
+    },
+    "keys": {
+      "title": "Professional Keys",
+      "desc": "Generates semantic English keys that are easy to use in code instead of random IDs."
+    },
+    "dev": {
+      "title": "Ready for Dev",
+      "desc": "Output data fully complies with i18n format. Just download ZIP and move files to project."
+    }
+  },
+  "toasts": {
+    "success": "Success!",
+    "genSuccess": "JSON generated successfully",
+    "error": "Error",
+    "genError": "Failed to generate",
+    "copied": "Copied!",
+    "copiedDesc": "{lang} JSON copied to clipboard"
+  }
+}

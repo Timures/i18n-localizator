@@ -1,5 +1,5 @@
 <script setup>
-
+const { t } = useI18n()
 
 useHead({
   script: [
@@ -23,10 +23,10 @@ useHead({
 })
 
 useSeoMeta({
-  title: 'i18n AI Generator | Smart JSON Localization',
-  ogTitle: 'i18n AI Generator',
-  description: 'Convert raw text to structured i18n JSON with AI. Semantic keys, professional translation, multi-language support.',
-  ogDescription: 'Automate your localization workflow with AI.',
+  title: () => t('meta.title'),
+  description: () => t('meta.description'),
+  ogTitle: t('meta.title'),
+  ogDescription: t('meta.description'),
   ogImage: '/og-image.png', // Сделай скриншот сайта и положи в public
   twitterCard: 'summary_large_image',
 })
@@ -36,8 +36,11 @@ useSeoMeta({
 
 <template>
   <UApp>
-    <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 font-sans py-10">
-      <Header />
+    <Header />
+
+    <UMain>
+    
+      
 
       <UContainer>
 
@@ -49,8 +52,14 @@ useSeoMeta({
 
       </UContainer>
 
-      <Footer />
-    </div>
+      
+ 
+    </UMain>
+
+     <USeparator icon="i-simple-icons-nuxtdotjs" type="dashed" class="h-px" />
+
+   
+    <Footer />
   </UApp>
 </template>
 
