@@ -35,8 +35,13 @@ export default defineNuxtConfig({
       viewport: 'width=device-width, initial-scale=1',
       title: 'i18n AI - Professional Localization Generator',
       meta: [
-        { name: 'description', content: 'Convert text to i18n JSON structure with AI power.' }
-      ],
+  { name: 'twitter:card', content: 'summary_large_image' },
+  { name: 'twitter:title', content: 'i18n AI | Smart JSON Localization' },
+  { name: 'twitter:description', content: 'Transform raw text into structured i18n JSON in seconds using AI.' },
+  { name: 'twitter:image', content: 'https://i18n-ai.com/og-image.png' }, // Картинку можно сделать позже
+  { property: 'og:type', content: 'website' },
+  { property: 'og:site_name', content: 'i18n AI' }
+]
     }
   },
   // Включаем совместимость с Nuxt 4

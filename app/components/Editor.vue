@@ -59,6 +59,7 @@ async function generateI18n() {
   isLoading.value = true
 
   try {
+    // Используем напрямую data, так как $fetch не возвращает Ref
     const data = await $fetch('/api/generate', {
       method: 'POST',
       body: { 
@@ -67,14 +68,28 @@ async function generateI18n() {
         isNested: isNested.value 
       }
     })
-    
-    results.value = {
-      original: data.original,
-      en: data.en
+
+    // Проверяем наличие данных напрямую
+    if (data && data.results) {
+      results.value = data.results
+      sourceLanguageName.value = data.detectedLanguage
+      activeTab.value = 'original'
+      
+      toast.add({ 
+        title: t('toasts.success'), 
+        description: t('toasts.genSuccess'), 
+        color: 'success' 
+      })
     }
-    sourceLanguageName.value = data.sourceLang
-    activeTab.value = 'original'
-    toast.add({ title: t('toasts.success'), description: t('toasts.genSuccess'), color: 'success' })
+    
+  
+    // results.value = {
+    //   original: data.original,
+    //   en: data.en
+    // }
+    // sourceLanguageName.value = data.sourceLang
+    // // activeTab.value = 'original'
+    // toast.add({ title: t('toasts.success'), description: t('toasts.genSuccess'), color: 'success' })
   } catch (error:any) {
     // Проверяем, не исчерпан ли лимит (код 429 или 503)
     if (error.status === 429 || error.status === 503) {

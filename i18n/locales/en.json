@@ -71,5 +71,9 @@
   "resultEmptyState": {
   "placeholderTitle": "Ready to generate",
   "placeholderDesc": "Paste your text on the left and see the magic happen here."
-}
+},
+ "marketing": {
+    "shareOnX": "Share on X",
+    "shareResultPrompt": "Liked the result? Tell your friends!"
+  }
 }

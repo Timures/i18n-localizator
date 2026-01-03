@@ -71,5 +71,9 @@
   "resultEmptyState": {
   "placeholderTitle": "Готов к генерации",
   "placeholderDesc": "Вставьте текст слева, и здесь появится структурированный JSON."
+},
+"marketing": {
+  "shareX":"Поделиться в X",
+  "shareTitle": "Понравился результат? Расскажите друзьям!"
 }
 }

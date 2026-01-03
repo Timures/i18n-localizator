@@ -2,87 +2,64 @@ import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-function setNestedProperty(obj: any, path: string, value: any) {
-  // Защита от Prototype Pollution
-  const keys = path.split('.').filter(k => k !== '__proto__' && k !== 'constructor');
-  let current = obj;
-  
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    if (i === keys.length - 1) {
-      current[key] = value;
-    } else {
-      // Проверка: если там уже строка, превращаем в объект (или пропускаем)
-      if (typeof current[key] === 'string') {
-        current[key] = { _value: current[key] }; 
-      }
-      current[key] = current[key] || {};
-      current = current[key];
-    }
-  }
-}
-
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
+  
+  // 1. Согласуем название: на фронте у тебя было 'text', используем его везде
   const { text, keyStyle, isNested } = await readBody(event);
 
-  // Используем ключ из конфига или окружения
+  if (!text) {
+    throw createError({ statusCode: 400, statusMessage: 'Text is required' });
+  }
+
   const groq = createOpenAI({
     baseURL: 'https://api.groq.com/openai/v1',
-    apiKey: config.groqApiKey || process.env.GROQ_API_KEY,
+    apiKey: config.groqApiKey, // Ключ должен быть в runtimeConfig.public или private
   });
 
   try {
-    const result = await generateObject({
-      // Рекомендуемая модель для четкого следования Zod схеме
+    // 2. Исправлено: передаем 'text', а не 'inputText'
+    const promptText = generateSmartPrompt(text, keyStyle, isNested);
+
+    const { object } = await generateObject({
+      // Убедись, что ID модели корректен для Groq API
       model: groq('openai/gpt-oss-20b'), 
       schema: z.object({
-        detectedLanguage: z.string().describe('Language name, e.g. "Russian", "Kazakh"'),
+        detectedLanguage: z.string(),
         items: z.array(z.object({
-          key: z.string().describe('English semantic key'),
-          original: z.string().describe('Source text'),
-          en: z.string().describe('English translation')
+          key: z.string(),
+          original: z.string(),
+          en: z.string()
         }))
       }),
-      prompt: `
-        Task: Extract i18n keys and translations.
-        Source Text: "${text}"
-        
-        Rules:
-        1. LIMIT: Extract NO MORE than 30 semantic keys. If the text is longer, focus on the most important UI elements.
-        2. Source Language: Detect automatically.
-        3. Key Style: ${keyStyle}.
-        4. Hierarchy: ${isNested ? 'Use dot.notation' : 'Flat keys'}.
-        5. Values: Extract ONLY text, clean from "Label:", "Button:", etc.
-        6. Quality: Keys must be semantic English.
-      `,
+      prompt: promptText
     });
 
-    const { detectedLanguage, items } = result.object;
-    const originalJson = {};
-    const enJson = {};
+    // Определяем, был ли входной текст JSON-ом для корректной сборки
+    const isInputJson = text.trim().startsWith('{') || text.trim().startsWith('[');
 
-    items.forEach(item => {
-      if (isNested) {
-        setNestedProperty(originalJson, item.key, item.original);
-        setNestedProperty(enJson, item.key, item.en);
-      } else {
-        originalJson[item.key] = item.original;
-        enJson[item.key] = item.en;
+    // 3. Собираем финальный ответ с правильными ссылками на переменные
+    const response = {
+      detectedLanguage: object.detectedLanguage,
+      results: {
+        original: formatI18nResult(
+          object.items.map(i => ({ key: i.key, translation: i.original })), 
+          isNested || isInputJson
+        ),
+        en: formatI18nResult(
+          object.items.map(i => ({ key: i.key, translation: i.en })), 
+          isNested || isInputJson
+        )
       }
-    });
-
-    return { 
-      sourceLang: detectedLanguage,
-      original: originalJson, 
-      en: enJson 
     };
 
+    return response;
+
   } catch (error: any) {
-    console.error('Generation Error:', error.message);
+    console.error('Generation Error:', error);
     throw createError({ 
       statusCode: 500, 
-      statusMessage: 'AI Error: ' + error.message 
+      statusMessage: 'AI Error: ' + (error.message || 'Unknown error')
     });
-  }
+  } 
 });
