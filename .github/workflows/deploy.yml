@@ -4,7 +4,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,25 +22,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Upload .output artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: output
-          path: .output/
-          retention-days: 1
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Download .output artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: output
-          path: .output/
-          github-token: ${{ secrets.GITHUB_TOKEN }} # ← это и было нужно
-          run-id: ${{ github.run_id }} # ← явно указываем текущий run
-
       - name: Copy .output to server
         uses: appleboy/scp-action@master
         with:
@@ -49,7 +30,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: ".output/"
-          target: "/var/www/i18n-ai/"
+          target: "/var/www/i18n-ai"
+          strip_components: 1 # убирает .output/ из пути → файлы попадут в /var/www/i18n-ai/.output/
           rm: true
 
       - name: Restart PM2
