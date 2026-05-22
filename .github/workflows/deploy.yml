@@ -23,4 +23,4 @@ jobs:
             git pull origin main
             npm install
             npm run build
-            pm2 restart i18n-ai-main # Перезапуск процесса в PM2
+            pm2 restart i18n-site # Перезапуск процесса в PM2
