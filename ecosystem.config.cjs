@@ -1,3 +1,5 @@
+require("dotenv").config(); // загружает .env
+
 module.exports = {
   apps: [
     {
@@ -7,6 +9,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
+        NUXT_GROQ_API_KEY: process.env.NUXT_GROQ_API_KEY,
       },
     },
   ],
